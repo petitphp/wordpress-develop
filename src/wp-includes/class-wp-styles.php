@@ -175,15 +175,10 @@ class WP_Styles extends WP_Dependencies {
 			$ie_conditional_suffix = "<![endif]-->\n";
 		}
 
-		$inline_style = $this->print_inline_style( $handle, false );
+		$inline_style = $this->get_inline_style_data( $handle );
 
 		if ( $inline_style ) {
-			$inline_style_tag = sprintf(
-				"<style id='%s-inline-css'%s>\n%s\n</style>\n",
-				esc_attr( $handle ),
-				$this->type_attr,
-				$inline_style
-			);
+			$inline_style_tag = $this->get_inline_style_tag( $handle );
 		} else {
 			$inline_style_tag = '';
 		}
@@ -288,7 +283,7 @@ class WP_Styles extends WP_Dependencies {
 		} else {
 			echo $ie_conditional_prefix;
 			echo $tag;
-			$this->print_inline_style( $handle );
+			echo $this->get_inline_style_tag( $handle );
 			echo $ie_conditional_suffix;
 		}
 
@@ -323,6 +318,7 @@ class WP_Styles extends WP_Dependencies {
 	 * Prints extra CSS styles of a registered stylesheet.
 	 *
 	 * @since 3.3.0
+	 * @deprecated 6.9.0 Use methods get_inline_style_tag() or get_inline_style_data() instead.
 	 *
 	 * @param string $handle  The style's registered handle.
 	 * @param bool   $display Optional. Whether to print the inline style
@@ -331,26 +327,59 @@ class WP_Styles extends WP_Dependencies {
 	 *                     true otherwise.
 	 */
 	public function print_inline_style( $handle, $display = true ) {
-		$output = $this->get_data( $handle, 'after' );
+		_deprecated_function( __METHOD__, '6.9.0', 'WP_Styles::get_inline_style_data() or WP_Styles::get_inline_style_tag()' );
+
+		$output = $this->get_inline_style_data( $handle );
 
 		if ( empty( $output ) ) {
 			return false;
 		}
 
-		$output = implode( "\n", $output );
-
 		if ( ! $display ) {
 			return $output;
 		}
 
-		printf(
-			"<style id='%s-inline-css'%s>\n%s\n</style>\n",
-			esc_attr( $handle ),
-			$this->type_attr,
-			$output
-		);
+		echo $this->get_inline_style_tag( $handle );
 
 		return true;
+	}
+
+	/**
+	 * Gets data for inline styles registered for a specific handle.
+	 *
+	 * @since 6.9.0
+	 *
+	 * @param string $handle   Name of the style to get data for.
+	 *                         Must be lowercase.
+	 * @return string Inline style, which may be empty string.
+	 */
+	public function get_inline_style_data( $handle ) {
+		$data = $this->get_data( $handle, 'after' );
+		if ( empty( $data ) || ! is_array( $data ) ) {
+			return '';
+		}
+
+		return trim( implode( "\n", $data ), "\n" );
+	}
+
+	/**
+	 * Gets tags for inline scripts registered for a specific handle.
+	 *
+	 * @since 6.9.0
+	 *
+	 * @param string $handle   Name of the style to get associated inline style tag for.
+	 *                         Must be lowercase.
+	 * @return string Inline style, which may be empty string.
+	 */
+	public function get_inline_style_tag( $handle ) {
+		$css = $this->get_inline_style_data( $handle, 'after' );
+		if ( empty( $css ) ) {
+			return '';
+		}
+
+		$id = "{$handle}-inline-css";
+
+		return wp_get_inline_style_tag( $css, compact( 'id' ) );
 	}
 
 	/**

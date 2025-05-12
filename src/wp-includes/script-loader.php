@@ -2831,7 +2831,6 @@ function wp_enqueue_editor_format_library_assets() {
 /**
  * Sanitizes an attributes array into an attributes string to be placed inside a `<script>` tag.
  *
- * Automatically injects type attribute if needed.
  * Used by {@see wp_get_script_tag()} and {@see wp_get_inline_script_tag()}.
  *
  * @since 5.7.0
@@ -2840,7 +2839,39 @@ function wp_enqueue_editor_format_library_assets() {
  * @return string String made of sanitized `<script>` tag attributes.
  */
 function wp_sanitize_script_attributes( $attributes ) {
-	$html5_script_support = ! is_admin() && ! current_theme_supports( 'html5', 'script' );
+	return _wp_sanitize_tag_attributes( $attributes, 'script' );
+}
+
+/**
+ * Sanitizes an attributes array into an attributes string to be placed inside a `<style>` tag.
+ *
+ * Used by {@see wp_get_inline_style_tag()}.
+ *
+ * @since 6.9.0
+ *
+ * @param array $attributes Key-value pairs representing `<style>` tag attributes.
+ * @return string String made of sanitized `<style>` tag attributes.
+ */
+function wp_sanitize_style_attributes( $attributes ) {
+	return _wp_sanitize_tag_attributes( $attributes, 'style' );
+}
+
+/**
+ * Sanitizes an attributes array into an attributes string to be placed inside a `<script>` or `<style>` tag.
+ *
+ * @since 6.9.0
+ *
+ * @param array  $attributes Key-value pairs representing the tag attributes.
+ * @param string $tag Name of the tag being sanitized. Accept `script` or `style`.
+ *                    Default to `script` if an unsupported value is provided.
+ * @return string String made of sanitized tag attributes.
+ */
+function _wp_sanitize_tag_attributes( $attributes, $tag ) {
+	if ( ! in_array( $tag, array( 'script', 'style' ), true ) ) {
+		$tag = 'script';
+	}
+
+	$html5_script_support = ! is_admin() && ! current_theme_supports( 'html5', $tag );
 	$attributes_string    = '';
 
 	/*
@@ -3009,6 +3040,59 @@ function wp_get_inline_script_tag( $data, $attributes = array() ) {
  */
 function wp_print_inline_script_tag( $data, $attributes = array() ) {
 	echo wp_get_inline_script_tag( $data, $attributes );
+}
+
+/**
+ * Constructs an inline style tag.
+ *
+ * It is possible to inject attributes in the `<style>` tag via the {@see 'wp_inline_style_attributes'} filter.
+ * Automatically injects type attribute if needed.
+ *
+ * @since 6.9.0
+ *
+ * @param string $data       Data for script tag.
+ * @param array  $attributes Optional. Key-value pairs representing `<style>` tag attributes.
+ * @return string String containing inline CSS code wrapped around `<style>` tag.
+ */
+function wp_get_inline_style_tag( $data, $attributes = array() ) {
+	$is_html5 = current_theme_supports( 'html5', 'style' ) || is_admin();
+	if ( ! isset( $attributes['type'] ) && ! $is_html5 ) {
+		$attributes = array_merge(
+			array( 'type' => 'text/css' ),
+			$attributes
+		);
+	}
+
+	$data = "\n" . trim( $data, "\n\r " ) . "\n";
+
+	/**
+	 * Filters attributes to be added to a style tag.
+	 *
+	 * @since 6.9.0
+	 *
+	 * @param array  $attributes Key-value pairs representing `<style>` tag attributes.
+	 *                           Only the attribute name is added to the `<style>` tag for
+	 *                           entries with a boolean value, and that are true.
+	 * @param string $data       Inline data.
+	 */
+	$attributes = apply_filters( 'wp_inline_style_attributes', $attributes, $data );
+
+	return sprintf( "<style%s>%s</style>\n", wp_sanitize_style_attributes( $attributes ), $data );
+}
+
+/**
+ * Prints an inline style tag.
+ *
+ * It is possible to inject attributes in the `<style>` tag via the {@see 'wp_inline_style_attributes'} filter.
+ * Automatically injects type attribute if needed.
+ *
+ * @since 6.9.0
+ *
+ * @param string $data       Data for style tag.
+ * @param array  $attributes Optional. Key-value pairs representing `<style>` tag attributes.
+ */
+function wp_print_inline_style_tag( $data, $attributes = array() ) {
+	echo wp_get_inline_style_tag( $data, $attributes );
 }
 
 /**
